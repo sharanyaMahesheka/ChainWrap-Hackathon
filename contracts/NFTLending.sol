@@ -9,13 +9,13 @@ contract NFTLending {
     uint64 public Time;
 
     struct LoanMetadata {
-        address borrower,
-        uint32 token_id,
-        uint128 shares_locked,
-        uint128 amount_asked,
-        uint128 security_deposit,
-        uint64 loan_period,
-        uint64 listing_timestamp,
+        address borrower;
+        uint32 token_id;
+        uint128 shares_locked;
+        uint128 amount_asked;
+        uint128 security_deposit;
+        uint64 loan_period;
+        uint64 listing_timestamp;
     }
 
     enum LoanStatus {
@@ -26,12 +26,12 @@ contract NFTLending {
     }
 
     struct LoanStats {
-        uint64 start_timestamp,
-        uint128 raised,
-        uint128 limit_left,
-        uint128 interest,
-        uint128 repaid,
-        LoanStatus loan_status,
+        uint64 start_timestamp;
+        uint128 raised;
+        uint128 limit_left;
+        uint128 interest;
+        uint128 repaid;
+        LoanStatus loan_status;
     }
 
     enum OfferStatus {
@@ -43,8 +43,8 @@ contract NFTLending {
 
     
     struct NewLoanAd {
-        uint128 loan_id,
-        address borrower
+        uint128 loan_id;
+        address borrower;
     }
 
     event NewLoanAdEvent(
@@ -83,9 +83,8 @@ contract NFTLending {
         OfferIsNotAccepted
     }
 
-
-
-    contract LendingLogic {
+//}
+    //contract LendingLogic {
         address public admin;
         address public fractionalizer;
         uint64 public loan_nonce;
@@ -117,9 +116,9 @@ contract NFTLending {
             uint128 _value,
             bytes memory _data) public returns (bytes memory) {
                 require(operator == msg.sender);
-                return hex"0xF2 0x3A 0x6E 0x61";
-        }
-
+                return hex"00";
+                //return hex"xF20x3A0x6E0x61";
+            }
         // Function to withdraw an existing offer made by a lender for a loan
         // @param loan_id: The ID of the loan
         // @return: The ID of the withdrawn offer if successful, otherwise an error is returned
@@ -128,12 +127,12 @@ contract NFTLending {
             address caller = msg.sender;
 
             // Get the loan metadata and statistics
-            LoanMetadata memory loan_metadata = ref_get_loan_metadata(loan_id);
-            LoanStats memory loan_stats = ref_get_loan_stats(loan_id);
+            LoanMetadata memory loan_metadata = loans[loan_id];
+            LoanStats memory loan_stats_0 = loan_stats[loan_id];
 
             // Check if the loan is currently in the offer phase
             require(
-                ref_is_offer_phase(loan_metadata, loan_stats),
+                ref_is_offer_phase(loan_metadata, loan_stats_0),
                 "Not in the offer phase"
             );
 
@@ -167,13 +166,13 @@ contract NFTLending {
         // @param offer_id: The ID of the lender's offer
         // @param response: The borrower's response to the offer (true = accepted, false = rejected)
         // @return: Ok() if the operation is successful, otherwise an error is returned
-        function respond_to_offer(LoanId loan_id, OfferId offer_id, bool response) public returns (Result) {
+        function respond_to_offer(LoanId loan_id, OfferId offer_id, bool response) public  {
             // Get the caller's address (borrower)
             address caller = msg.sender;
 
             // Get the loan metadata and statistics
-            LoanMetadata memory loan_metadata = ref_get_loan_metadata(loan_id);
-            LoanStats memory loan_stats = ref_get_loan_stats(loan_id);
+            LoanMetadata memory loan_metadata = loans[loan_id];
+            LoanStats memory loan_stats_1 = loan_stats[loan_id];
 
             // Check if the caller is the borrower of the loan
             require(
@@ -183,20 +182,20 @@ contract NFTLending {
 
             // Check if the loan is currently in the open status
             require(
-                loan_stats.loan_status == LoanStatus.OPEN,
+                loan_stats_1.loan_status == LoanStatus.OPEN,
                 "Loan is not open for responses"
             );
 
             // Check if the loan has not expired (within the cooldown period)
             uint256 time = block.timestamp;
-            uint256 cooldown_time = loan_metadata.listing_timestamp + self.offer_phase_duration + self.cooldown_phase_duration;
+            uint256 cooldown_time = loan_metadata.listing_timestamp + offer_phase_duration + cooldown_phase_duration;
             require(
                 time <= cooldown_time,
                 "Loan has expired and is not accepting responses"
             );
 
             // Get the details of the lender's offer for the loan
-            OfferMetadata memory offer = ref_get_offer_details(loan_id, offer_id);
+            OfferMetadata memory offer = offers[loan_id][offer_id];
 
             // Check if the offer is in the PENDING state
             require(
@@ -212,7 +211,7 @@ contract NFTLending {
                 // If the borrower accepts the offer
                 // Check if the offered amount does not exceed the remaining loan limit
                 require(
-                    offer.amount <= loan_stats.limit_left,
+                    offer.amount <= loan_stats_1.limit_left,
                     "Offer amount exceeds the remaining loan limit"
                 );
 
@@ -221,22 +220,21 @@ contract NFTLending {
                 offers[loan_id][offer_id] = offer;
 
                 // Update the loan statistics with the accepted offer details
-                loan_stats.raised += offer.amount;
-                loan_stats.limit_left -= offer.amount;
-                loan_stats.interest += offer.interest;
+                loan_stats_1.raised += offer.amount;
+                loan_stats_1.limit_left -= offer.amount;
+                loan_stats_1.interest += offer.interest;
 
                 // Check if the loan limit is fully utilized
-                if (loan_stats.limit_left == 0) {
+                if (loan_stats_1.limit_left == 0) {
                     // If the loan limit is fully utilized, start the loan (mark it as ACTIVE)
-                    ref_start_loan(loan_id, loan_stats, caller);
+                    ref_start_loan(loan_id, loan_stats_1, caller);
                 } else {
                     // If there is still available loan limit, update the loan statistics
-                    loan_stats[loan_id] = loan_stats;
+                    loan_stats[loan_id] = loan_stats_1;
                 }
             }
 
             // Return Ok() to indicate the successful completion of the function
-            return Ok();
         }
 
         // Function to list an advertisement for a loan
@@ -269,7 +267,7 @@ contract NFTLending {
                 listing_timestamp: block.timestamp
             });
 
-            LoanStats memory loan_stats = LoanStats({
+            LoanStats memory loan_stats_2 = LoanStats({
                 start_timestamp: 0,
                 raised: 0,
                 limit_left: amount_asked,
@@ -280,23 +278,23 @@ contract NFTLending {
 
             loan_nonce++;
             loans[loan_nonce] = loan_metadata;
-            loan_stats[loan_nonce] = loan_stats;
+            loan_stats[loan_nonce] = loan_stats_2;
 
             emit NewLoanAdEvent(loan_nonce, caller);
 
             return loan_nonce;
         }
 
-        function start_loan(uint32 loan_id) public returns (Result) {
+        function start_loan(uint32 loan_id) public {
             address caller = msg.sender;
 
             // Fetch the loan metadata and loan stats from the respective mappings
             LoanMetadata memory loan_metadata = loans[loan_id];
-            LoanStats memory loan_stats = loan_stats[loan_id];
+            LoanStats memory loan_stats_3 = loan_stats[loan_id];
 
             require(caller == loan_metadata.borrower, "NotAuthorized");
-            require(loan_stats.loan_status == LoanStatus.OPEN, "LoanIsNotOpen");
-            require(loan_stats.raised > 0, "ZeroValue");
+            require(loan_stats_3.loan_status == LoanStatus.OPEN, "LoanIsNotOpen");
+            require(loan_stats_3.raised > 0, "ZeroValue");
 
             // Calculate the cooldown time
             uint64 time = uint64(block.timestamp);
@@ -304,25 +302,25 @@ contract NFTLending {
             require(time <= cooldown_time, "LoanHasExpired");
 
             // Call the internal function to start the loan
-            _start_loan(loan_id, loan_stats, caller);
+            _start_loan(loan_id, loan_stats_3, caller);
 
             // Emit the NewLoanAd event (assuming you have the LoanId as an indexed parameter)
         }
 
         // Function to cancel a loan
-        function cancel_loan(uint128 loan_id) public returns (Result) {
+        function cancel_loan(uint128 loan_id) public {
             address caller = msg.sender;
 
             // Fetch the loan metadata and loan stats from the respective mappings
             LoanMetadata storage loan_metadata = loans[loan_id];
-            LoanStats storage loan_stats = loan_stats[loan_id];
+            LoanStats storage loan_stats_4 = loan_stats[loan_id];
 
             uint64 time = uint64(block.timestamp);
             uint64 cooldown_time = loan_metadata.listing_timestamp + offer_phase_duration + cooldown_phase_duration;
 
             // If the cooldown_time has not elapsed, only the borrower can cancel the loan
             require(time > cooldown_time || caller == loan_metadata.borrower, "NotAuthorized");
-            require(loan_stats.loan_status == LoanStatus.OPEN, "LoanIsNotOpen");
+            require(loan_stats_4.loan_status == LoanStatus.OPEN, "LoanIsNotOpen");
 
             // Calculate the cancellation charges and the amount to be refunded to the borrower
             uint128 cancellation_charges = get_cancellation_charges();
@@ -341,84 +339,76 @@ contract NFTLending {
             transfer_fractional_nft(address(this), loan_metadata.borrower, loan_metadata.token_id, loan_metadata.shares_locked);
 
             // Update the loan status to 'CANCELLED'
-            loan_stats.loan_status = LoanStatus.CANCELLED;
-            loan_stats[loan_id] = loan_stats;
+            loan_stats_4.loan_status = LoanStatus.CANCELLED;
+            loan_stats[loan_id] = loan_stats_4;
 
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
         }
 
         // Function to repay a loan
-        function repay_loan(uint128 loan_id) public returns (Result) {
+        function repay_loan(uint128 loan_id) public  {
             // Fetch the loan metadata and loan stats from the respective mappings
             LoanMetadata storage loan_metadata = loans[loan_id];
-            LoanStats storage loan_stats = loan_stats[loan_id];
+            LoanStats storage loan_stats_5 = loan_stats[loan_id];
 
             // Check if the loan is active
-            require(loan_stats.loan_status == LoanStatus.ACTIVE, "LoanIsNotActive");
+            require(loan_stats_5.loan_status == LoanStatus.ACTIVE, "LoanIsNotActive");
 
             uint64 time = uint64(block.timestamp);
-            uint64 loan_expiry = loan_stats.start_timestamp + loan_metadata.loan_period;
+            uint64 loan_expiry = loan_stats_5.start_timestamp + loan_metadata.loan_period;
             
             // Check if the loan repayment period is still ongoing
             require(time <= loan_expiry, "LoanRepaymentPeriodAlreadyOver");
 
             // Increment the amount repaid with the transferred value
-            loan_stats.repaid += uint128(msg.value);
+            loan_stats_5.repaid += uint128(msg.value);
 
             // Check if the loan has been fully repaid with interest
-            if (loan_stats.repaid >= loan_stats.raised + loan_stats.interest) {
+            if (loan_stats_5.repaid >= loan_stats_5.raised + loan_stats_5.interest) {
                 // Call the internal function to settle the loan
-                ref_settle_loan(loan_id, loan_metadata, loan_stats);
+                ref_settle_loan(loan_id, loan_metadata, loan_stats_5);
                 
                 // Call the internal function to increment the credit score of the borrower
                 inc_credit_score(loan_metadata.borrower);
 
                 // Update the loan status to 'CLOSED'
-                loan_stats.loan_status = LoanStatus.CLOSED;
+                loan_stats_5.loan_status = LoanStatus.CLOSED;
             }
 
             // Update the loan_stats mapping with the updated loan_stats
-            loan_stats[loan_id] = loan_stats;
-
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
+            loan_stats[loan_id] = loan_stats_5;
         }
 
         // Function to claim a loan as default by the borrower
         // @param loan_id: The identifier of the loan to be claimed as default
         // @return: A Result indicating success or failure of the operation
-        function claim_loan_default(uint128 loan_id) public returns (Result) {
+        function claim_loan_default(uint128 loan_id) public {
             // Get the loan metadata and stats from their respective mappings
             LoanMetadata storage loan_metadata = loans[loan_id];
-            LoanStats storage loan_stats = loan_stats[loan_id];
+            LoanStats storage loan_stats_6 = loan_stats[loan_id];
 
             // Ensure the loan status is ACTIVE; otherwise, it cannot be claimed as default
-            require(loan_stats.loan_status == LoanStatus.ACTIVE, "Loan is not active");
+            require(loan_stats_6.loan_status == LoanStatus.ACTIVE, "Loan is not active");
 
             // Get the current block timestamp
             uint256 time = block.timestamp;
 
             // Calculate the loan expiry time (start timestamp + loan period)
-            uint256 loan_expiry = loan_stats.start_timestamp + loan_metadata.loan_period;
+            uint256 loan_expiry = loan_stats_6.start_timestamp + loan_metadata.loan_period;
 
             // Ensure the current time has passed the loan expiry time; otherwise, it cannot be claimed as default
             require(time > loan_expiry, "Loan has not expired");
 
             // Call the function to settle the loan as it has defaulted
-            ref_settle_loan(loan_id, loan_metadata, loan_stats);
+            ref_settle_loan(loan_id, loan_metadata, loan_stats_6);
 
             // Reduce the credit score of the borrower
             dec_credit_score(loan_metadata.borrower);
 
             // Set the loan status to CLOSED as it has been claimed as default
-            loan_stats.loan_status = LoanStatus.CLOSED;
+            loan_stats_6.loan_status = LoanStatus.CLOSED;
 
             // Update the loan stats in the mapping
-            loan_stats[loan_id] = loan_stats;
-
-            // Return success
-            return Result.Ok;
+            loan_stats[loan_id] = loan_stats_6;
         }
 
         // Function to make a lending offer for a specific loan
@@ -435,16 +425,16 @@ contract NFTLending {
 
             // Get the metadata and stats of the loan
             LoanMetadata memory loan_metadata = loans[loan_id];
-            LoanStats memory loan_stats = loan_stats[loan_id];
+            LoanStats memory loan_stats_7 = loan_stats[loan_id];
 
             // Check if the offer phase is still active for the loan
-            is_offer_phase(loan_metadata, loan_stats);
+            is_offer_phase(loan_metadata, loan_stats_7);
 
             // Check if the caller has already made an active offer for the loan
             require(!active_offer_id[loan_id][caller], "ActiveOfferAlreadyExists: You have already made an active offer for this loan");
 
             // Check if the lending amount does not exceed the remaining limit for the loan
-            require(amount <= loan_stats.limit_left, "ExcessiveLendingAmountSent: Lending amount exceeds the remaining limit for this loan");
+            require(amount <= loan_stats_7.limit_left, "ExcessiveLendingAmountSent: Lending amount exceeds the remaining limit for this loan");
 
             // Generate a new offer_id for the offer
             offer_id = offers_nonce[loan_id];
@@ -474,20 +464,20 @@ contract NFTLending {
         function is_offer_phase(uint256 loan_id) public view returns (bool) {
             // Get the metadata and stats of the loan
             LoanMetadata memory loan_metadata = loans[loan_id];
-            LoanStats memory loan_stats = loan_stats[loan_id];
+            LoanStats memory loan_stats_8 = loan_stats[loan_id];
 
             // Call the internal function ref_is_offer_phase to perform the actual check
-            return ref_is_offer_phase(loan_metadata, loan_stats);
+            return ref_is_offer_phase(loan_metadata, loan_stats_8);
         }
 
         // Internal function to check if the loan is currently in the offer phase
         // @param loan_metadata: The metadata of the loan
         // @param loan_stats: The statistics of the loan
         // @return: Success if the loan is in the offer phase, otherwise an error is returned
-        function ref_is_offer_phase(LoanMetadata memory loan_metadata, LoanStats memory loan_stats) internal view returns (bool) {
+        function ref_is_offer_phase(LoanMetadata memory loan_metadata, LoanStats memory loan_stats_9) internal view returns (bool) {
             // Ensure that the loan status is OPEN (in the offer phase)
             require(
-                loan_stats.loan_status == LoanStatus.OPEN,
+                loan_stats_9.loan_status == LoanStatus.OPEN,
                 "Not in the offer phase"
             );
 
@@ -505,34 +495,32 @@ contract NFTLending {
         }
 
 
-        function ref_start_loan(uint128 loan_id, LoanStats storage loan_stats, address borrower) internal returns (Result) {
-            loan_stats.start_timestamp = uint64(block.timestamp);
-            loan_stats.loan_status = LoanStatus.ACTIVE;
-            loan_stats[loan_id] = loan_stats;
+        function ref_start_loan(uint128 loan_id, LoanStats storage loan_stats_10, address borrower) internal {
+            loan_stats_10.start_timestamp = uint64(block.timestamp);
+            loan_stats_10.loan_status = LoanStatus.ACTIVE;
+            loan_stats[loan_id] = loan_stats_10;
 
             // Transfer the raised amount to the borrower
             // Assuming the 'raised' amount is held in the contract's balance
-            if (!payable(borrower).send(loan_stats.raised)) {
+            if (!payable(borrower).send(loan_stats_10.raised)) {
                 revert("WithdrawFailed");
             }
 
             // Call the internal function to reject all pending offers
             reject_all_pending_offers(loan_id);
 
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
         }
 
         // Function to settle a loan
-        function ref_settle_loan(uint128 loan_id, LoanMetadata storage loan_metadata, LoanStats storage loan_stats) internal returns (Result) {
+        function ref_settle_loan(uint128 loan_id, LoanMetadata storage loan_metadata, LoanStats storage loan_stats_11) internal {
             uint32 total_offers = get_offer_nonce_or_default(loan_id);
             uint128 remaining_shares = loan_metadata.shares_locked;
-            uint128 borrower_unlocked_shares = ref_get_borrower_settlement(loan_stats, loan_metadata.shares_locked);
+            uint128 borrower_unlocked_shares = ref_get_borrower_settlement(loan_stats_11, loan_metadata.shares_locked);
 
             for (uint32 offer_id = 0; offer_id < total_offers; offer_id++) {
                 OfferMetadata memory offer = offers[loan_id][offer_id];
                 if (offer.status == OfferStatus.ACCEPTED) {
-                    (uint128 funds, uint128 nft_shares) = ref_get_lender_settlement(loan_metadata, loan_stats, offer, borrower_unlocked_shares);
+                    (uint128 funds, uint128 nft_shares) = ref_get_lender_settlement(loan_metadata, loan_stats_11, offer, borrower_unlocked_shares);
                     remaining_shares -= nft_shares;
 
                     // Transfer funds to the lender
@@ -546,13 +534,11 @@ contract NFTLending {
             // Transfer remaining NFT shares back to the borrower
             transfer_fractional_nft(address(this), loan_metadata.borrower, loan_metadata.token_id, remaining_shares);
 
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
         }
         
 
         // Function to reject all pending and accepted offers
-        function ref_reject_all_offers(uint32 loan_id) internal returns (Result) {
+        function ref_reject_all_offers(uint32 loan_id) internal {
             uint32 total_offers = get_offer_nonce_or_default(loan_id);
 
             for (uint32 offer_id = 0; offer_id < total_offers; offer_id++) {
@@ -565,11 +551,10 @@ contract NFTLending {
                     ref_reject_offer(loan_id, offer_id, offer);
                 }
             }
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
+
         }
 
-        function reject_all_pending_offers(uint128 loan_id) internal returns (Result) {
+        function reject_all_pending_offers(uint128 loan_id) internal {
             uint32 total_offers = get_offer_nonce_or_default(loan_id);
 
             for (uint128 offer_id = 0; offer_id < total_offers; offer_id++) {
@@ -581,12 +566,10 @@ contract NFTLending {
                     ref_reject_offer(loan_id, offer_id, offer);
                 }
             }
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
         }
 
          // Function to reject an offer
-        function ref_reject_offer(uint128 loan_id, uint128 offer_id, OfferMetadata storage offer) internal returns (Result) {
+        function ref_reject_offer(uint128 loan_id, uint128 offer_id, OfferMetadata storage offer) internal  {
             // Transfer the offer amount back to the lender
             // Assuming the 'amount' is held in the contract's balance
             if (!payable(offer.lender).send(offer.amount)) {
@@ -602,8 +585,6 @@ contract NFTLending {
             // Update the offer in the offers mapping
             offers[loan_id][offer_id] = offer;
 
-            // Return the equivalent of Ok() in Rust
-            return Result.Ok;
         }
 
         // Function to get the borrower's settlement shares
@@ -692,11 +673,11 @@ contract NFTLending {
             address from,
             address to,
             TokenId token_id,
-            Balance amount
-        ) internal returns (Result) {
+            uint256 amount
+        ) internal  {
             // Check if the amount is zero, in which case, return Ok()
             if (amount == 0) {
-                return Ok();
+                return ;
             }
 
             // @dev: This part is disabled during tests due to the use of `invoke_contract()` not being supported
@@ -717,7 +698,7 @@ contract NFTLending {
             // ensure!(result.is_ok(), Error::FractionalNftTransferFailed);
 
             // Return Ok() to indicate successful execution of the function
-            return Ok();
+            return;
         }
         
         
@@ -757,4 +738,3 @@ contract NFTLending {
         }
 
     }
-}
