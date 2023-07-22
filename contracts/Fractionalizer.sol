@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
-contract BasicERC1155 is ERC1155 {
+contract Fractionalizer is ERC1155 {
 
     event Fractionalized(uint256 tokenId,address caller,uint256 shares);
 
@@ -82,6 +82,6 @@ contract BasicERC1155 is ERC1155 {
         return result;
     }
 
-    constructor(string memory uri) ERC1155(uri) {
+    constructor() ERC1155("https://ipfs.io/ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn/{id}.png") {
     }
 }
