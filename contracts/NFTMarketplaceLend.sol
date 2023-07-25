@@ -176,14 +176,19 @@ contract NFTMarketplace is ERC721URIStorage {
         uint256 collateralAmount;
         uint256 tokenId;
         bool active;
+        uint256 amountOwed;
     }
 
     mapping(uint256 => Loan) private idToLoan;
     mapping(address => uint256) public loanTakenByUser;
     uint256 private loanCounter = 1;
 
-    function amountOwed(uint256 loanId) public view returns(uint256){
-        return idToLoan[loanId].loanAmount + (idToLoan[loanId].loanAmount*idToLoan[loanId].interestRate*idToLoan[loanId].duration)/100;
+    function calculateAmountOwed(uint256 loanAmount, uint256 interestRate, uint256 duration) public pure returns(uint256){
+        return loanAmount + (loanAmount*interestRate*duration)/100;
+    }
+
+    function amountOwedOnLoan(uint256 loanId) public view returns(uint256){
+        return idToLoan[loanId].amountOwed;
     }
 
     function getAllMyLoans()public view returns(Loan memory){
@@ -202,7 +207,7 @@ contract NFTMarketplace is ERC721URIStorage {
         //ERC20Burnable(token.fnft).approve(msg.sender, token.amount);
         //ERC20Burnable(token.fnft).transferFrom(msg.sender, address(this), quantityOfFractional);
         token.amount -= quantityOfFractional;
-        Loan memory loan = Loan(amountOfLoan, 5, duration, loanCounter, token.fnft, quantityOfFractional, tokenId, true);
+        Loan memory loan = Loan(amountOfLoan, 5, duration, loanCounter, token.fnft, quantityOfFractional, tokenId, true, calculateAmountOwed(amountOfLoan, 5, duration));
         idToLoan[loanCounter] = loan;
         loanTakenByUser[msg.sender] = loanCounter;
         loanCounter++;
@@ -211,7 +216,7 @@ contract NFTMarketplace is ERC721URIStorage {
     }
 
     function repayLoan(uint256 loanId) public payable{
-        require(msg.value==amountOwed(loanId), "Give correct amount");
+        require(msg.value==amountOwedOnLoan(loanId), "Give correct amount");
         Loan memory loan = idToLoan[loanId];
         loan.active = false;
         ListedToken memory token = idToListedToken[loan.tokenId];
